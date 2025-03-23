@@ -2,6 +2,8 @@ import socket
 import threading
 import os
 import sys
+import gzip
+import io
 
 
 def handle_client(client_socket, directory):
@@ -35,7 +37,7 @@ def handle_client(client_socket, directory):
 
         elif path.startswith("/echo/"):
             echo_str = path[len("/echo/"):]
-            content_length = len(echo_str.encode())
+            echo_bytes = echo_str.encode()
             
             # Check if client supports gzip compression
             accept_encoding = headers.get("accept-encoding", "")
@@ -49,17 +51,32 @@ def handle_client(client_socket, directory):
                 "Content-Type: text/plain",
             ]
             
-            # Add Content-Encoding header if client supports gzip
+            # Compress the body if client supports gzip
             if supports_gzip:
+                # Add Content-Encoding header
                 response_headers.append("Content-Encoding: gzip")
+                
+                # Compress the body
+                compressed_body = gzip.compress(echo_bytes)
+                content_length = len(compressed_body)
+            else:
+                compressed_body = None
+                content_length = len(echo_bytes)
                 
             response_headers.append(f"Content-Length: {content_length}")
             response_headers.append("")  # Empty line before body
-            response_headers.append(echo_str)
             
             # Join headers with CRLF
-            response = "\r\n".join(response_headers)
-            client_socket.sendall(response.encode())
+            headers_str = "\r\n".join(response_headers)
+            
+            # Send headers
+            client_socket.sendall(headers_str.encode())
+            
+            # Send body (compressed or not)
+            if supports_gzip:
+                client_socket.sendall(compressed_body)
+            else:
+                client_socket.sendall(echo_bytes)
 
         elif path == "/user-agent":
             user_agent = headers.get("user-agent", "")
