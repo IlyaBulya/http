@@ -7,14 +7,17 @@ def main():
     while True:
         client, _ = server_socket.accept()
         request = client.recv(4096).decode()
-        path = request.split(" ")[1]
+
+        # Получаем первую строку запроса и путь
+        lines = request.split("\r\n")
+        path = lines[0].split(" ")[1]
 
         if path == "/":
             response = "HTTP/1.1 200 OK\r\n\r\n"
+
         elif path.startswith("/echo/"):
-            # Получаем текст после "/echo/"
             echo_str = path[len("/echo/"):]
-            content_length = len(echo_str.encode())  # учитываем байты, не только символы
+            content_length = len(echo_str.encode())
             response = (
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
@@ -22,6 +25,24 @@ def main():
                 "\r\n"
                 f"{echo_str}"
             )
+
+        elif path == "/user-agent":
+            # Ищем строку с User-Agent
+            user_agent = ""
+            for line in lines:
+                if line.lower().startswith("user-agent:"):
+                    user_agent = line.split(":", 1)[1].strip()
+                    break
+
+            content_length = len(user_agent.encode())
+            response = (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+                f"Content-Length: {content_length}\r\n"
+                "\r\n"
+                f"{user_agent}"
+            )
+
         else:
             response = "HTTP/1.1 404 Not Found\r\n\r\n"
 
