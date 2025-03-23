@@ -45,37 +45,38 @@ def handle_client(client_socket, directory):
             supported_encodings = [encoding.strip() for encoding in accept_encoding.split(",")]
             supports_gzip = "gzip" in supported_encodings
             
-            # Build response headers
-            response_headers = [
-                "HTTP/1.1 200 OK",
-                "Content-Type: text/plain",
-            ]
-            
             # Compress the body if client supports gzip
             if supports_gzip:
-                # Add Content-Encoding header
-                response_headers.append("Content-Encoding: gzip")
-                
                 # Compress the body
                 compressed_body = gzip.compress(echo_bytes)
                 content_length = len(compressed_body)
-            else:
-                compressed_body = None
-                content_length = len(echo_bytes)
                 
-            response_headers.append(f"Content-Length: {content_length}")
-            response_headers.append("")  # Empty line before body
-            
-            # Join headers with CRLF
-            headers_str = "\r\n".join(response_headers)
-            
-            # Send headers
-            client_socket.sendall(headers_str.encode())
-            
-            # Send body (compressed or not)
-            if supports_gzip:
+                # Build response with proper CRLF
+                response = (
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Content-Encoding: gzip\r\n"
+                    f"Content-Length: {content_length}\r\n"
+                    "\r\n"
+                )
+                
+                # Send headers as text and compressed body as binary
+                client_socket.sendall(response.encode())
                 client_socket.sendall(compressed_body)
             else:
+                # No compression
+                content_length = len(echo_bytes)
+                
+                # Build response with proper CRLF
+                response = (
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/plain\r\n"
+                    f"Content-Length: {content_length}\r\n"
+                    "\r\n"
+                )
+                
+                # Send headers and uncompressed body
+                client_socket.sendall(response.encode())
                 client_socket.sendall(echo_bytes)
 
         elif path == "/user-agent":
