@@ -36,13 +36,27 @@ def handle_client(client_socket, directory):
         elif path.startswith("/echo/"):
             echo_str = path[len("/echo/"):]
             content_length = len(echo_str.encode())
-            response = (
-                "HTTP/1.1 200 OK\r\n"
-                "Content-Type: text/plain\r\n"
-                f"Content-Length: {content_length}\r\n"
-                "\r\n"
-                f"{echo_str}"
-            )
+            
+            # Check if client supports gzip compression
+            accept_encoding = headers.get("accept-encoding", "")
+            supports_gzip = "gzip" in accept_encoding.split(",")
+            
+            # Build response headers
+            response_headers = [
+                "HTTP/1.1 200 OK",
+                "Content-Type: text/plain",
+            ]
+            
+            # Add Content-Encoding header if client supports gzip
+            if supports_gzip:
+                response_headers.append("Content-Encoding: gzip")
+                
+            response_headers.append(f"Content-Length: {content_length}")
+            response_headers.append("")  # Empty line before body
+            response_headers.append(echo_str)
+            
+            # Join headers with CRLF
+            response = "\r\n".join(response_headers)
             client_socket.sendall(response.encode())
 
         elif path == "/user-agent":
