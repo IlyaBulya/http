@@ -39,7 +39,9 @@ def handle_client(client_socket, directory):
             
             # Check if client supports gzip compression
             accept_encoding = headers.get("accept-encoding", "")
-            supports_gzip = "gzip" in accept_encoding.split(",")
+            # Split by comma and strip whitespace from each encoding
+            supported_encodings = [encoding.strip() for encoding in accept_encoding.split(",")]
+            supports_gzip = "gzip" in supported_encodings
             
             # Build response headers
             response_headers = [
