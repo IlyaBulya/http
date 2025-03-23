@@ -1,13 +1,12 @@
 import socket
+import threading
 
 
-def main():
-    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-
-    while True:
-        client, _ = server_socket.accept()
-        request = client.recv(4096).decode()
-
+def handle_client(client_socket):
+    """Handle a client connection in a separate thread."""
+    try:
+        request = client_socket.recv(4096).decode()
+        
         # Получаем первую строку запроса и путь
         lines = request.split("\r\n")
         path = lines[0].split(" ")[1]
@@ -46,8 +45,21 @@ def main():
         else:
             response = "HTTP/1.1 404 Not Found\r\n\r\n"
 
-        client.sendall(response.encode())
-        client.close()
+        client_socket.sendall(response.encode())
+    finally:
+        client_socket.close()
+
+
+def main():
+    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+
+    while True:
+        client, _ = server_socket.accept()
+        
+        # Create a new thread to handle the client connection
+        client_thread = threading.Thread(target=handle_client, args=(client,))
+        client_thread.daemon = True  # Set as daemon so it exits when the main thread exits
+        client_thread.start()
 
 
 if __name__ == "__main__":
